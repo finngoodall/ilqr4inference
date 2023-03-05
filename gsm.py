@@ -17,34 +17,17 @@ Nx = 5
 Nu = 3
 Ny = 12
 
-"""
-Breaking the degeneracy
-Try:
-- Passing an initial setting `x1_prior`
-- Ny > Nx
-- A = np.random(...)
-- Changing tau_x for each latent
-- Changing the noise for each measurement
-"""
+
 
 # Create the dynamics and distributions
-dt = 0.05
-tau_xs = np.random.normal(loc=0.5, scale=0.05, size=Nx-1)
-tau_c = 10.0
 A = np.random.uniform(-1, 1, size=(Ny, Nx-1))
-B = np.random.uniform(-3, 3, size=(Nx, Nu))
+B = np.random.uniform(-1, 1, size=(Nx, Nu))
 u_cov = np.eye(Nu)
-u_cov[-1, -1] = 0.05
 y_cov = np.diag(np.random.uniform(0.1, 0.5, size=Ny))
 
-dynamics = GSMDynamics(Nx, Nu, B, dt, tau_xs, tau_c)
-# meas_model = GSMExpMeasurement(Ny, A, y_cov)
-# meas_model = GaussianMeasurement(Ny, y_cov, lambda x, t: requad(0.2*x[-1])*A@x[:-1])
+dynamics = GSMDynamics(Nx, Nu, B)
 meas_model = GaussianMeasurement(Ny, y_cov, lambda x, t: requad(x[-1])*A@x[:-1])
-# meas_model = GaussianMeasurement(Ny, y_cov, lambda x, t: requad(5*x[-1])*A@x[:-1])
-# meas_model = GaussianMeasurement(Ny, y_cov, lambda x, t: np.exp(x[-1])*A@x[:-1])
-# meas_model = GaussianMeasurement(Ny, y_cov, h=lambda x, t: x[-1]*A@x[:-1])
-input_prior = GaussianPrior(Nu, u_cov, t0_weight=1/dt)
+input_prior = GaussianPrior(Nu, u_cov, t0_weight=1/dynamics.dt)
 
 
 
