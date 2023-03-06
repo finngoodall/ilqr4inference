@@ -26,6 +26,10 @@ class Gaussian():
             raise ValueError("Covariance matrix must be positive definite")
         if self.Ndims != self.cov.shape[0]:
             raise ValueError(f"Mean and covariance must have equal dimensions")
+        
+    # Used for ease in commparing to None
+    def __bool__(self):
+        return True
 
 
 
