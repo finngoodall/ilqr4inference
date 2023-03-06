@@ -43,7 +43,8 @@ true_xs, true_us, ys = sample_trajectory(
     dynamics,
     meas_model,
     input_prior,
-    num_steps
+    num_steps,
+    np.random.multivariate_normal(x1_prior.mean, x1_prior.cov)
 )
 
 
@@ -52,18 +53,18 @@ true_xs, true_us, ys = sample_trajectory(
 kalman_smoother = KalmanSmoother(A, B, C, u_cov, y_cov)
 kalman_xs, kalman_us = kalman_smoother(ys, x1_prior)
 
-lqr = LQR(dynamics, meas_model, input_prior, ys)
+lqr = LQR(dynamics, meas_model, input_prior, ys, x1_prior)
 lqr_xs, lqr_us = lqr()
 
-ilqr = iLQR(dynamics, meas_model, input_prior, ys)
+ilqr = iLQR(dynamics, meas_model, input_prior, ys, x1_prior)
 us_init = [np.random.multivariate_normal(np.zeros(Nu), 0.1*np.eye(Nu))
            for _ in range(num_steps)]
-ilqr_xs, ilqr_us = ilqr(us_init)
+ilqr_xs, ilqr_us = ilqr(us_init, print_iters=True)
 
 
 
 # Plot results
-plotter = Plotter(Nx, Nu, Ny)
+plotter = Plotter(Nx, Nu, Ny, sd=2.0)
 plotter.plot_states(true_xs, kalman_xs, lqr_xs, ilqr_xs)
 plotter.plot_inputs(true_us, kalman_us, lqr_us, ilqr_us)
 plotter.plot_measurements(meas_model, ys, kalman_xs, lqr_xs, ilqr_xs)

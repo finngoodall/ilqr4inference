@@ -12,12 +12,13 @@ from lib.utils import diag_regularise, pd_svd_inv
 class iLQR():
     def __init__(self, dynamics: Dynamics, meas_model: MeasurementModel,
                  input_prior: InputPrior, ys: List[NDArray],
-                 ls_gamma: float = 0.5, ls_beta: float = 0.5,
-                 ls_iters: int | None = 25):
+                 x1_prior: Gaussian = None, ls_gamma: float = 0.5,
+                 ls_beta: float = 0.5, ls_iters: int | None = 25):
         self.dynamics = dynamics
         self.meas_model = meas_model
         self.input_prior = input_prior
         self.ys = ys
+        self.x1_prior = x1_prior
         self.ls_gamma = ls_gamma
         self.ls_beta = ls_beta
         self.ls_iters = ls_iters
@@ -52,7 +53,11 @@ class iLQR():
         cov_u = np.eye(self.dynamics.Nu)
 
         # Timestep t = 0
-        x = Gaussian(np.zeros(self.dynamics.Nx), cov_x)
+        if self.x1_prior:
+            # Using x1_prior for x0 in the rollout has no affect(?)
+            x = self.x1_prior
+        else:
+            x = Gaussian(np.zeros(self.dynamics.Nx), cov_x)
         u0 = np.zeros(self.dynamics.Nu)
 
         for t, u_mean in enumerate([u0] + us_init):
@@ -69,7 +74,13 @@ class iLQR():
 
     def _cost(self, xs: List[Gaussian], us: List[Gaussian]):
 
-        cost = -self.input_prior.ll(us[0].mean, 0)
+        # cost = -self.input_prior.ll(us[0].mean, 0)
+        cost = 0
+
+        if self.x1_prior:
+            v = xs[1].mean - self.x1_prior.mean
+            cost += 0.5 * v.T @ pd_svd_inv(self.x1_prior.cov) @ v
+
         for t in range(1, self.T+1):
             cost -= self.meas_model.ll(xs[t].mean, self.ys[t-1], t)
             cost -= self.input_prior.ll(us[t].mean, t)
@@ -142,15 +153,17 @@ class iLQR():
 
             ks[t] = k
             Ks[t] = K
+            if t == 1:
+                v1 = v
             Vs[t] = V
             Q_uu_invs[t] = Q_uu_inv
 
-        return ks, Ks, Vs, Q_uu_invs
+        return ks, Ks, v1, Vs, Q_uu_invs
 
     def _compute_trajectory(self, a: float, xs_old: List[Gaussian],
                             us_old: List[Gaussian], ks: NDArray, Ks: NDArray,
-                            Vs: NDArray, Q_uu_invs: NDArray, F_xs: NDArray,
-                            F_us: NDArray, C_xxs: NDArray,
+                            v1: NDArray, Vs: NDArray, Q_uu_invs: NDArray,
+                            F_xs: NDArray, F_us: NDArray, C_xxs: NDArray,
                             C_uus: NDArray) -> Tuple[List[Gaussian]]:
         # This `x` has a placeholder covariance which is never used
         x = Gaussian(np.zeros(self.dynamics.Nx), np.eye(self.dynamics.Nx))
@@ -160,22 +173,34 @@ class iLQR():
         us = [u]
 
         F_x_inv = np.linalg.inv(F_xs[0])
-        P = F_us[0] @ u.cov @ F_us[0].T
-        P = (P + P.T)/2
+        # NOTE: If x1_prior isn't given then P = 0 here, else P = inv(x1_prior.cov)
+        # P = F_us[0] @ u.cov @ F_us[0].T
+        P = np.zeros((self.dynamics.Nx, self.dynamics.Nx))
         P1 = F_x_inv.T @ (P + C_xxs[0]) @ F_x_inv
         P2 = pd_svd_inv(C_uus[0] + F_us[0].T @ P1 @ F_us[0])
 
         for t in range(1, self.T+1):
-            P = P1 - P1 @ F_us[t-1] @ P2 @ F_us[t-1].T @ P1
-            P = (P + P.T)/2
-            F_x_inv = np.linalg.inv(F_xs[t])
-            P1 = F_x_inv.T @ (P + C_xxs[t]) @ F_x_inv
-            P2 = pd_svd_inv(C_uus[t] + F_us[t].T @ P1 @ F_us[t])
-
-            x = Gaussian(
-                self.dynamics.f(x.mean, u.mean, t-1),
-                pd_svd_inv(P + Vs[t])
-            )
+            if t == 1:
+                if self.x1_prior:
+                    P = pd_svd_inv(self.x1_prior.cov)
+                    x_cov = pd_svd_inv(P + Vs[t])
+                    x = Gaussian(
+                        xs_old[1].mean + a*x_cov@(P@self.x1_prior.mean-v1),
+                        x_cov
+                    )
+                else:
+                    P = np.zeros((self.dynamics.Nx, self.dynamics.Nx))
+                    x = Gaussian(
+                        xs_old[1].mean - a*pd_svd_inv(Vs[t])@v1,
+                        pd_svd_inv(Vs[t])
+                    )
+            else:
+                P = P1 - P1 @ F_us[t-1] @ P2 @ F_us[t-1].T @ P1.T
+                P = (P + P.T)/2
+                x = Gaussian(
+                    self.dynamics.f(x.mean, u.mean, t-1),
+                    pd_svd_inv(P + Vs[t])
+                )
             u = Gaussian(
                 us_old[t].mean + Ks[t] @ (x.mean - xs_old[t].mean) + \
                     a * ks[t],
@@ -185,12 +210,16 @@ class iLQR():
             xs.append(x)
             us.append(u)
 
+            F_x_inv = np.linalg.inv(F_xs[t])
+            P1 = F_x_inv.T @ (P + C_xxs[t]) @ F_x_inv
+            P2 = pd_svd_inv(C_uus[t] + F_us[t].T @ P1 @ F_us[t])
+
         return xs, us
 
     def _forward_pass(self, xs_old: List[Gaussian], us_old: List[Gaussian],
-                      ks: NDArray, Ks: NDArray, Vs: NDArray, Q_uu_invs: NDArray,
-                      F_xs: NDArray, F_us: NDArray, C_xxs: NDArray,
-                      C_uus: NDArray) -> Tuple:
+                      ks: NDArray, Ks: NDArray, v1: NDArray, Vs: NDArray,
+                      Q_uu_invs: NDArray, F_xs: NDArray, F_us: NDArray,
+                      C_xxs: NDArray, C_uus: NDArray) -> Tuple:
         """Performs an iLQR forwards pass to compute the new optimal states and
         inputs.
         
@@ -229,7 +258,7 @@ class iLQR():
         old_cost = self._cost(xs_old, us_old)
 
         if self.ls_iters == None:
-            xs, us = self._compute_trajectory(1.0, xs_old, us_old, ks, Ks, Vs,
+            xs, us = self._compute_trajectory(1.0, xs_old, us_old, ks, Ks, v1, Vs,
                                               Q_uu_invs, F_xs, F_us, C_xxs,
                                               C_uus)
 
@@ -241,7 +270,7 @@ class iLQR():
             if n == self.ls_iters:
                 a = 0.0
 
-            xs, us = self._compute_trajectory(a, xs_old, us_old, ks, Ks, Vs,
+            xs, us = self._compute_trajectory(a, xs_old, us_old, ks, Ks, v1, Vs,
                                               Q_uu_invs, F_xs, F_us, C_xxs,
                                               C_uus)
 
@@ -311,10 +340,10 @@ class iLQR():
                     -self.input_prior.d2ll(us[t].mean, t))
                 # C_uxs[t] = -self.model.d2c_dux(xs[t].mean, us[t].mean, t)
 
-            ks, Ks, Vs, Q_uu_invs = self._backward_pass(F_xs, F_us, c_xs, c_us,
+            ks, Ks, v1, Vs, Q_uu_invs = self._backward_pass(F_xs, F_us, c_xs, c_us,
                                                         C_xxs, C_uxs, C_uus)
 
-            xs_new, us_new, new_cost = self._forward_pass(xs, us, ks, Ks, Vs,
+            xs_new, us_new, new_cost = self._forward_pass(xs, us, ks, Ks, v1, Vs,
                                                           Q_uu_invs, F_xs, F_us,
                                                           C_xxs, C_uus)
 
@@ -330,7 +359,7 @@ class iLQR():
             cost = new_cost
 
         # Don't return x_0 and u_0
-        return xs_new[1:], us_new[1:]
+        return xs[1:], us[1:]
 
 
 
@@ -340,8 +369,9 @@ class LQR(iLQR):
     inputs through the `system` that minimises the `cost` function."""
 
     def __init__(self, dynamics: Dynamics, meas_model: MeasurementModel,
-                 input_prior: InputPrior, ys: List[NDArray]):
-        super().__init__(dynamics, meas_model, input_prior, ys,
+                 input_prior: InputPrior, ys: List[NDArray],
+                 x1_prior: Gaussian = None):
+        super().__init__(dynamics, meas_model, input_prior, ys, x1_prior,
                          ls_iters=None)
 
     def __call__(self) -> Tuple[List[Gaussian]]:
