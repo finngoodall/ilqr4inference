@@ -22,10 +22,11 @@ Ny = 12
 # Create the dynamics and distributions
 A = np.random.uniform(-1, 1, size=(Ny, Nx-1))
 B = np.random.uniform(-1, 1, size=(Nx, Nu))
+tau_x = np.random.normal(loc=0.5, scale=0.05, size=Nx-1)
 u_cov = np.eye(Nu)
-y_cov = np.diag(np.random.uniform(0.1, 0.5, size=Ny))
+y_cov = np.diag(np.random.uniform(0.01, 0.1, size=Ny))
 
-dynamics = GSMDynamics(Nx, Nu, B)
+dynamics = GSMDynamics(Nx, Nu, B, tau_x=tau_x)
 meas_model = GaussianMeasurement(Ny, y_cov, lambda x, t: requad(x[-1])*A@x[:-1])
 input_prior = GaussianPrior(Nu, u_cov, t0_weight=1/dynamics.dt)
 
