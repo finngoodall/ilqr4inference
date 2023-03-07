@@ -166,7 +166,7 @@ class iLQR():
         P2 = pd_svd_inv(C_uus[0] + F_us[0].T @ P1 @ F_us[0])
 
         for t in range(1, self.T+1):
-            P = P1 - P1 @ F_us[t-1] @ P2 @ F_us[t-1].T @ P1
+            P = P1 - P1 @ F_us[t-1] @ P2 @ F_us[t-1].T @ P1.T
             P = (P + P.T)/2
             F_x_inv = np.linalg.inv(F_xs[t])
             P1 = F_x_inv.T @ (P + C_xxs[t]) @ F_x_inv
@@ -301,7 +301,8 @@ class iLQR():
                     # Pass fake observations of y = 0
                     y = np.zeros(self.meas_model.Ny)
                     c_xs[t] = -self.meas_model.dll(xs[t].mean, y, t)
-                    C_xxs[t] = -self.meas_model.d2ll(xs[t].mean, y, t)
+                    C_xxs[t] = diag_regularise(
+                        -self.meas_model.d2ll(xs[t].mean, y, t))
                 else:
                     c_xs[t] = -self.meas_model.dll(xs[t].mean, self.ys[t-1], t)
                     C_xxs[t] = diag_regularise(
