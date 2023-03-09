@@ -6,7 +6,7 @@ from lib.models.dynamics import LinearDynamics
 from lib.models.inputs import StudentPrior
 from lib.models.measurements import PoissonMeasurement
 from lib.lqr import iLQR
-from lib.plotters import Plotter
+from lib.plotters import Plotter, plot_variances
 
 
 
@@ -35,7 +35,6 @@ C = np.ones((Ny, Nx))
 C[:3, 1] = 0
 C[3:, 0] = 0
 meas_model = PoissonMeasurement(Ny, h=lambda x, t: np.exp(C@x))
-
 
 
 
@@ -68,9 +67,6 @@ plotter.plot_states(true_xs=true_xs, ilqr_xs=ilqr_xs)
 plotter.plot_inputs(true_us=true_us, ilqr_us=ilqr_us)
 plotter.plot_measurements(model=meas_model, true_ys=ys, ilqr_xs=ilqr_xs)
 
-_, ax = plt.subplots(1, 1, figsize=(8, 3))
-ax.plot([u.cov[0, 0] for u in ilqr_us], label="$(\Sigma^{uu}_t)_0$")
-ax.plot([u.cov[1, 1] for u in ilqr_us], label="$(\Sigma^{uu}_t)_1$")
-ax.legend()
+plot_variances(ilqr_us)
 
 plt.show()

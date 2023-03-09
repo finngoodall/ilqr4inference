@@ -131,6 +131,7 @@ class Plotter():
                 y2=[l[i] for l in lowers],
                 color=c, alpha=0.2
             )
+            
     def plot_states(self, true_xs: List[NDArray] = None,
                     kalman_xs: List[Gaussian] = None,
                     lqr_xs: List[Gaussian] = None,
@@ -236,3 +237,17 @@ def plot_spikes(ys: List[NDArray]) -> None:
     ax.set_yticks(np.arange(ys_ndarray.shape[1]))
 
     plt.show()
+
+
+
+def plot_variances(gaussians: List[Gaussian]) -> None:
+    """Plot the variances of the given gaussian objects at each timestep."""
+
+    variances = np.zeros((len(gaussians), gaussians[0].Ndims))
+    for t, g in enumerate(gaussians):
+        variances[t] = np.diag(g.cov)
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 3))
+    for i in range(gaussians[0].Ndims):
+        ax.plot(variances[:, i], label=f"$\sigma_{i}^2$")
+    ax.legend()
