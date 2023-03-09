@@ -21,34 +21,19 @@ class GaussianPrior(InputPrior):
         self._P = np.linalg.inv(self.cov)
 
     def sample(self, t: int) -> NDArray:
-        if t == 0:
-            return np.random.multivariate_normal(
-                mean=np.zeros(self.Nu),
-                cov=self.w*self.cov
-            )
-        else:
-            return np.random.multivariate_normal(
-                mean=np.zeros(self.Nu),
-                cov=self.cov
-            )
+        return np.random.multivariate_normal(
+            mean=np.zeros(self.Nu),
+            cov=self.cov
+        )
     
     def ll(self, u: NDArray, t: int) -> float:
-        if t == 0:
-            return -0.5 * u.T @ self._P @ u / self.w
-        else:
-            return -0.5 * u.T @ self._P @ u
+        return -0.5 * u.T @ self._P @ u
 
     def dll(self, u: NDArray, t: int) -> NDArray:
-        if t == 0:
-            return -self._P @ u / self.w
-        else:
-            return -self._P @ u
+        return -self._P @ u
     
     def d2ll(self, u: NDArray, t: int) -> NDArray:
-        if t == 0:
-            return -self._P/self.w
-        else:
-            return -self._P
+        return -self._P
 
 
 
@@ -68,16 +53,7 @@ class StudentPrior(AGInputPrior):
         self.w = t0_weight
 
     def sample(self, t: int) -> NDArray:
-        if t == 0:
-            return np.random.multivariate_normal(
-                np.zeros(self.Nu),
-                self.w*np.diag(self.S)
-            )
-        else:
-            return student.rvs(df=self.nu, scale=self.S)
+        return student.rvs(df=self.nu, scale=self.S)
     
     def ll(self, u: NDArray, t: int) -> float:
-        if t == 0:
-            return -0.5 * u.T/(self.S*self.w) @ u
-        else:
-            return -np.log(1 + (u.T/self.S @ u) / self.nu)
+        return -np.log(1 + (u.T/self.S @ u) / self.nu)
