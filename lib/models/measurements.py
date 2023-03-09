@@ -7,16 +7,74 @@ from lib.base import AGMeasurementModel, MeasurementModel
 
 
 
-class GaussianMeasurement(AGMeasurementModel):
-    """Class for a multivariate normal distribution with zero mean and
-    covariance `cov`.
+class LinearGaussianMeasurement(MeasurementModel):
+    """Class for a Gaussian distributed measurements with a linear mapping from
+    the latent state to the measurement mean.
+    """
     
-    `h` maps the latent state `x` at time `t` to the mean of the distribution in
-    the observation domain, i.e. `h(x, t)` and `cov` have compatible
-    dimensions."""
+    def __init__(
+            self,
+            Ny: int,
+            cov: NDArray,
+            C: NDArray
+        ) -> None:
+        """Construct the measurement model.
+        
+        Parameters
+        - `Ny`:
+            Number of measurement dimensions
+        - `cov`:
+            Covariance matrix of the measurements
+        - `C`:
+            Matrix that maps the latent state to the mean of the Gaussian
+            distribution.
+        """
 
-    def __init__(self, Ny: int, cov: NDArray,
-                 h: Callable[[NDArray], NDArray] = lambda x, t: x):
+        self.Ny = Ny
+        self.cov = cov
+        self.C = C
+        # Store the precision matrix to use in calculations
+        self._P = np.linalg.inv(self.cov)
+
+    def sample(self, x: NDArray, t: int) -> NDArray:
+        return np.random.multivariate_normal(self.C@x, self.cov)
+    
+    def ll(self, x: NDArray, y: NDArray, t: int) -> float:
+        v = self.C@x - y
+        return -0.5 * v.T @ self._P @ v
+    
+    def dll(self, x: NDArray, y: NDArray, t: int) -> float:
+        v = self.C@x - y
+        return -self.C.T @ self._P @ v
+    
+    def d2ll(self, x: NDArray, y: NDArray, t: int) -> float:
+        return -self.C.T @ self._P @ self.C
+
+
+
+class GaussianMeasurement(AGMeasurementModel):
+    """Class for a Gaussian distributed measurements with a nonlinear mapping
+    from the latent state to the measurement mean.
+    """
+    
+    def __init__(
+            self,
+            Ny: int,
+            cov: NDArray,
+            h: Callable[[NDArray, int], NDArray] = lambda x, t: x
+        ) -> None:
+        """Construct the measurement model.
+        
+        Parameters
+        - `Ny`:
+            Number of measurement dimensions
+        - `cov`:
+            Covariance matrix of the measurements
+        - `h`:
+            Function that maps the latent state `x` at time `t` to the mean of
+            the Gaussian distribution.
+        """
+
         self.Ny = Ny
         self.cov = cov
         self.h = h
@@ -33,13 +91,23 @@ class GaussianMeasurement(AGMeasurementModel):
 
 
 class PoissonMeasurement(AGMeasurementModel):
-    """Class for a Poisson distribution with `Ny` observation dimensions.
-    
-    `h` maps the latent state `x` at time `t` to the mean of the  observations'
-    Poisson distribution."""
+    """Class for Poisson distributed measurements."""
 
-    def __init__(self, Ny: int,
-                 h: Callable[[NDArray], NDArray] = lambda x, t: x):
+    def __init__(
+            self,
+            Ny: int,
+            h: Callable[[NDArray], NDArray] = lambda x, t: x
+        ) -> None:
+        """Construct the measurement model.
+        
+        Parameters
+        - `Ny`:
+            Number of measurement dimensions
+        - `h`:
+            Function that maps the latent state `x` at time `t` to the mean of
+            the Gaussian distribution.
+        """
+
         self.Ny = Ny
         self.h = h
 
