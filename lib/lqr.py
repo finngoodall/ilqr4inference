@@ -5,7 +5,7 @@ import numpy as np
 
 from lib.base import Gaussian, Dynamics, MeasurementModel, InputPrior
 from lib.models.dynamics import LinearDynamics
-from lib.models.measurements import GaussianMeasurement
+from lib.models.measurements import LinearGaussianMeasurement
 from lib.models.inputs import GaussianPrior
 from lib.utils import diag_regularise, pd_svd_inv
 
@@ -456,7 +456,7 @@ class LQR(iLQR):
     def __init__(
             self,
             dynamics: LinearDynamics,
-            meas_model: GaussianMeasurement,
+            meas_model: LinearGaussianMeasurement,
             input_prior: GaussianPrior,
             ys: List[NDArray],
             x0_prior: Gaussian = None
@@ -477,7 +477,7 @@ class LQR(iLQR):
         """
         
         linear_model = (isinstance(dynamics, LinearDynamics)
-                        and isinstance(meas_model, GaussianMeasurement)
+                        and isinstance(meas_model, LinearGaussianMeasurement)
                         and isinstance(input_prior, GaussianPrior))
         if not linear_model:
             print("Warning: LQR can only infer over linear generative models correctly.")
