@@ -8,23 +8,29 @@ from lib.base import AGInputPrior, InputPrior
 
 
 class GaussianPrior(InputPrior):
-    """Class for a Gaussian prior over the control inputs in a generative
-    model with mean 0 and covariance `cov`. `t0_weight` multiplies the
-    covariance at timestep 0 to allow for cheaper setting of the initial
-    conditions."""
+    """Class for a zero-mean Gaussian prior over the control inputs to a
+    generative model.
+    """
 
-    def __init__(self, Nu: int, cov: NDArray, t0_weight: float = 10.0):
+    def __init__(self, Nu: int, cov: NDArray):
+        """Construct the Gaussian prior.
+        
+        Parameters
+        - `Nu`:
+            Number of control input dimensions
+        - `cov`:
+            Covariance of the Gaussian distribution
+        """
+
         self.Nu = Nu
         self.cov = cov
-        self.w = t0_weight
         # Store the precision matrix to use in calculations
         self._P = np.linalg.inv(self.cov)
 
     def sample(self, t: int) -> NDArray:
-        return np.random.multivariate_normal(
-            mean=np.zeros(self.Nu),
-            cov=self.cov
-        )
+        """Sample from the control input prior at timestep `t`."""
+
+        return np.random.multivariate_normal(np.zeros(self.Nu), self.cov)
     
     def ll(self, u: NDArray, t: int) -> float:
         return -0.5 * u.T @ self._P @ u
@@ -38,21 +44,29 @@ class GaussianPrior(InputPrior):
 
 
 class StudentPrior(AGInputPrior):
-    """Class for a Student t-distribution prior over the control inputs in a
-    generative model with mean 0, `nu` degrees of freedom and shape vector `S`.
-    `t0_weight` multiplies the shape at timestep 0 to allow for cheaper setting
-    of the initial conditions.
-    
-    Inherits methods from `MeasDistribution` but overwrites the signatures of
-    the the methods so that only the control input and time are needed."""
+    """Class for a zero-mean Student t-distribution prior over the control
+    inputs in a generative model.
+    """
 
-    def __init__(self, Nu: int, nu: float, S: NDArray, t0_weight: float = 10.0):
+    def __init__(self, Nu: int, nu: float, S: NDArray):
+        """Construct the Gaussian prior.
+        
+        Parameters
+        - `Nu`:
+            Number of control input dimensions
+        - `dof`:
+            Degrees of freedeom of the distribution
+        - `S`:
+            Shape vector of the distribution
+        """
+
         self.Nu = Nu
         self.nu = nu
         self.S = S
-        self.w = t0_weight
 
     def sample(self, t: int) -> NDArray:
+        """Sample from the control input prior at timestep `t`."""
+        
         return student.rvs(df=self.nu, scale=self.S)
     
     def ll(self, u: NDArray, t: int) -> float:
