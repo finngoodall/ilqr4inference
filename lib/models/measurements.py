@@ -36,6 +36,9 @@ class LinearGaussianMeasurement(MeasurementModel):
         # Store the precision matrix to use in calculations
         self._P = np.linalg.inv(self.cov)
 
+    def h(self, x, t) -> NDArray:
+        return self.C @ x
+
     def sample(self, x: NDArray, t: int) -> NDArray:
         return np.random.multivariate_normal(self.C@x, self.cov)
     
