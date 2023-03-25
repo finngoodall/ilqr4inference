@@ -7,7 +7,7 @@ from lib.kalman import KalmanSmoother
 from lib.lqr import LQR, iLQR
 from lib.models.dynamics import LinearDynamics
 from lib.models.inputs import GaussianPrior
-from lib.models.measurements import GaussianMeasurement
+from lib.models.measurements import LinearGaussianMeasurement
 from lib.plotters import Plotter
 
 
@@ -32,7 +32,7 @@ y_cov = 0.15*np.eye(Ny)
 
 dynamics = LinearDynamics(Nx, Nu, A, B)
 input_prior = GaussianPrior(Nu, u_cov)
-meas_model = GaussianMeasurement(Ny, y_cov, lambda x, t: C@x)
+meas_model = LinearGaussianMeasurement(Ny, y_cov, C)
 
 x1_prior = Gaussian(np.zeros(Nx), np.eye(Nx))
 
@@ -64,7 +64,7 @@ ilqr_xs, ilqr_us = ilqr(us_init, print_iters=True)
 
 
 # Plot results
-plotter = Plotter(Nx, Nu, Ny, sd=2.0)
+plotter = Plotter(Nx, Nu, Ny)
 plotter.plot_states(true_xs, kalman_xs, lqr_xs, ilqr_xs)
 plotter.plot_inputs(true_us, kalman_us, lqr_us, ilqr_us)
 plotter.plot_measurements(meas_model, ys, kalman_xs, lqr_xs, ilqr_xs)

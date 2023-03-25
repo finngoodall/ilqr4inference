@@ -27,7 +27,7 @@ y_cov = 0.1*np.eye(Ny)
 
 dynamics = GSMDynamicsKnownContrast(Nx, Nu, B, tau_x=tau_x)
 meas_model = GaussianMeasurement(Ny, y_cov, meas_func)
-input_prior = GaussianPrior(Nu, u_cov, t0_weight=1/dynamics.dt)
+input_prior = GaussianPrior(Nu, u_cov)
 
 
 
