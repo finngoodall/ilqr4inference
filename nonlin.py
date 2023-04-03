@@ -29,7 +29,7 @@ dynamics = LinearDynamics(Nx, Nu, A, B)
 nu = 2
 S = 0.1*np.ones(Nu)
 t0_weight=10.0
-input_prior = StudentPrior(Nu, nu, S)
+input_prior = StudentPrior(Nu, nu, np.zeros(Nu), S)
 
 C = np.ones((Ny, Nx))
 C[:3, 1] = 0

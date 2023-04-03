@@ -101,8 +101,7 @@ class iLQR():
 
         cost = 0
         if self.x0_prior:
-            v = xs[0] - self.x0_prior.mean
-            cost += 0.5 * v.T @ pd_svd_inv(self.x0_prior.cov) @ v
+            cost -= self.x0_prior.ll(xs[0], 0)
 
         for t in range(self.T):
             cost -= self.meas_model.ll(xs[t], self.ys[t], t)
@@ -226,12 +225,7 @@ class iLQR():
 
         for t in range(self.T):
             if t == 0:
-                if self.x0_prior:
-                    P = pd_svd_inv(self.x0_prior.cov)
-                    x_cov = pd_svd_inv(P + V0)
-                    x = xs_old[0] + a*x_cov@(P@self.x0_prior.mean - v0)
-                else:
-                    x = xs_old[0] - a*pd_svd_inv(V0)@v0
+                x = xs_old[0] - a*pd_svd_inv(V0)@v0
             else:
                 x = self.dynamics.f(x, u, t)
 
@@ -289,11 +283,7 @@ class iLQR():
         xs_with_covs = []
         us_with_covs = []
 
-        if self.x0_prior:
-            P = pd_svd_inv(self.x0_prior.cov)
-        else:
-            P = np.zeros((self.dynamics.Nx, self.dynamics.Nx))
-
+        P = np.zeros((self.dynamics.Nx, self.dynamics.Nx))
         for t in range(self.T):
             x = Gaussian(xs[t], pd_svd_inv(P + Vs[t]))
             u = Gaussian(us[t], Ks[t] @ x.cov @ Ks[t].T + Q_uu_invs[t])
@@ -422,6 +412,9 @@ class iLQR():
                 c_xs[t] = -self.meas_model.dll(xs[t], self.ys[t], t)
                 C_xxs[t] = diag_regularise(
                     -self.meas_model.d2ll(xs[t], self.ys[t], t))
+                if t == 0 and self.x0_prior:
+                    c_xs[t] += -self.x0_prior.dll(xs[t], t)
+                    C_xxs[t] += -self.x0_prior.d2ll(xs[t], t)
                 c_us[t] = -self.input_prior.dll(us[t], t)
                 C_uus[t] = diag_regularise(-self.input_prior.d2ll(us[t], t))
 

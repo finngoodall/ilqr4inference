@@ -31,10 +31,10 @@ u_cov = np.eye(Nu)
 y_cov = 0.15*np.eye(Ny)
 
 dynamics = LinearDynamics(Nx, Nu, A, B)
-input_prior = GaussianPrior(Nu, u_cov)
+input_prior = GaussianPrior(Nu, np.zeros(Nu), u_cov)
 meas_model = LinearGaussianMeasurement(Ny, y_cov, C)
 
-x1_prior = Gaussian(np.zeros(Nx), np.eye(Nx))
+x1_prior = GaussianPrior(Nx, np.zeros(Nx), np.eye(Nx))
 
 
 
