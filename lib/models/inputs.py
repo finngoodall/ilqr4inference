@@ -70,4 +70,4 @@ class StudentPrior(AGInputPrior):
         return student.rvs(df=self.nu, scale=self.S)
     
     def ll(self, u: NDArray, t: int) -> float:
-        return -np.log(1 + (u.T/self.S @ u) / self.nu)
+        return -0.5*(self.nu + self.Nu)*np.log(1 + (u.T/self.S @ u) / self.nu)
