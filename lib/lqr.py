@@ -393,7 +393,7 @@ class iLQR():
         xs = self._rollout(us_init)
         us = np.array(us_init)
         # Set final input to 0 as it cannot be determined
-        us[-1] = np.zeros(self.dynamics.Nu)
+        us[-1] = self.input_prior.mean
 
         cost = self._cost(xs, us)
         if print_iters:
