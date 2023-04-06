@@ -157,7 +157,7 @@ class iLQR():
         V = C_xxs[-1]
         v = c_xs[-1]
         Vs[-1] = V
-        Q_uu_invs[-1] = pd_svd_inv(C_uus[-1] + F_us[-1].T @ V @ F_us[-1])
+        Q_uu_invs[-1] = pd_svd_inv(C_uus[-1])
 
         for t in range(self.T-2, -1, -1):
             Q_xx = C_xxs[t] + F_xs[t].T @ V @ F_xs[t]
@@ -392,6 +392,9 @@ class iLQR():
 
         xs = self._rollout(us_init)
         us = np.array(us_init)
+        # Set final input to 0 as it cannot be determined
+        us[-1] = np.zeros(self.dynamics.Nu)
+
         cost = self._cost(xs, us)
         if print_iters:
             print(f"iLQR 0/{num_iters}: Cost = {cost}")

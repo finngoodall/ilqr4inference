@@ -93,9 +93,9 @@ class KalmanSmoother():
             x = self._update(x_pred, y_pred, y)
             filter_xs.append(x)
 
-        # Final input set to 0 as it cannot be determined
+        # Set final input to 0 as it cannot be determined
         xs = [filter_xs[-1]]
-        us = [Gaussian(np.zeros(self.Nu), np.eye(self.Nu))]
+        us = [Gaussian(np.zeros(self.Nu), self.u_cov)]
         for x_f in reversed(filter_xs[:-1]):
             x, u = self._smooth(x, x_f)
             xs.append(x)
