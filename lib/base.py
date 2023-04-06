@@ -8,10 +8,18 @@ from lib.utils import is_pos_def
 
 
 class Gaussian():
-    """Class for a Gaussian distribuion over an inferred state, described by the
-    given `mean` and covaraince matrix `cov`."""
+    """Class for a Gaussian distribuion over an inferred state."""
 
     def __init__(self, mean: NDArray , cov: NDArray):
+        """Construct the Gaussian object.
+        
+        Parameters
+        - `mean`: NDArray
+            The mean of the distribution
+        - `cov`: NDArray
+            The covariance of the distribution
+        """
+
         self.mean = mean
         self.cov = cov
         if self.mean.shape:
@@ -27,7 +35,7 @@ class Gaussian():
         if self.Ndims != self.cov.shape[0]:
             raise ValueError(f"Mean and covariance must have equal dimensions")
         
-    # Used for ease in commparing to None
+    # Used for ease in commparing to NoneTypes
     def __bool__(self):
         return True
 
@@ -41,25 +49,29 @@ class MeasurementModel():
         raise NotImplementedError
     
     def ll(self, x: NDArray, y: NDArray, t: int) -> float:
-        """Computes the log-likelihood of seeing the observation `y` from the
-        state `x` at time `t`."""
+        """Evaluate the log-likelihood of the observation `y` from the state `x` 
+        at time `t`.
+        """
         raise NotImplementedError
     
     def dll(self, x: NDArray, y: NDArray, t: int) -> NDArray:
-        """Computes the derivative of `ll` with respect to the latent state `x`
-        at time `t`."""
+        """Evaluate the derivative of the log-likelihood with respect to the
+        state at the state `x`, observation `y` and time `t`.
+        """
         raise NotImplementedError
     
     def d2ll(self, x: NDArray, y: NDArray, t: int) -> NDArray:
-        """Computes the second derivative of `ll` with respect to the latent
-        state `x` at time `t`."""
+        """Evaluate the second derivative of the log-likelihood with respect to
+        the state at the state `x`, observation `y` and time `t`.
+        """
         raise NotImplementedError
 
 
 
 class AGMeasurementModel(MeasurementModel):
     """Class for `Measurement` objects that uses autograd to automatically
-    compute `dll` and `d2ll`."""
+    compute the derivatives of the log-likelihood.
+    """
 
     # Use private properties for derivatives because `dc_dx = jacobian(.)` makes
     # Pylance falsely think code is unreachable
@@ -72,13 +84,9 @@ class AGMeasurementModel(MeasurementModel):
         return jacobian(self._dll)
     
     def dll(self, x: NDArray, y: NDArray, t: int) -> NDArray:
-        """Computes the derivative of `ll` with respect to the latent state `x`
-        at time `t`."""
         return self._dll(x, y, t)
     
     def d2ll(self, x: NDArray, y: NDArray, t: int) -> NDArray:
-        """Computes the second derivative of `ll` with respect to the latent
-        state `x` at time `t`."""
         return self._d2ll(x, y, t)
 
 
@@ -88,25 +96,29 @@ class Dynamics():
     """Base class to represent the system dynamics in generative models."""
 
     def f(self, x: NDArray, u: NDArray, t: int) -> NDArray:
-        """Computes the next state given the current state `x`, input `u` and
-        time `t`."""
+        """Evaluate the next state from the current state `x`, input `u` and
+        time `t`.
+        """
         raise NotImplementedError
 
     def df_dx(self, x: NDArray, u: NDArray, t: int) -> NDArray:
-        """Computes the derivative of the transition function `f` with respect
-        to the state `x`."""
+        """Evaluate the derivative of the transition function with repsect to
+        the state at the state `x`, input `u` and time `t`.
+        """
         raise NotImplementedError
     
     def df_du(self, x: NDArray, u: NDArray, t: int) -> NDArray:
-        """Computes the derivative of the transition function `f` with respect
-        to the input `u`."""
+        """Evaluate the derivative of the transition function with repsect to
+        the input at the state `x`, input `u` and time `t`.
+        """
         raise NotImplementedError
 
 
 
 class AGDynamics(Dynamics):
     """Class for `Dynamics` objects that uses autograd to automatically compute
-    `df_dx` and `df_du`."""
+    the derivatives of the state transition function.
+    """
 
     # Use private properties for derivatives because `df_dx = jacobian(.)` makes
     # Pylance falsely think code is unreachable
@@ -119,44 +131,45 @@ class AGDynamics(Dynamics):
         return jacobian(self.f, argnum=1)
     
     def df_dx(self, x: NDArray, u: NDArray, t: int) -> NDArray:
-        """Computes the derivative of the transition function `f` with respect
-        to the state `x`."""
         return self._df_dx(x, u, t)
     
     def df_du(self, x: NDArray, u: NDArray, t: int) -> NDArray:
-        """Computes the derivative of the transition function `f` with respect
-        to the input `u`."""
         return self._df_du(x, u, t)
     
 
 
-class InputPrior():
-    """Base class for prior distributions over control inputs."""
+class Prior():
+    """Base class for prior distributions over initial states or control inputs
+    in the generative model.
+    """
 
     def sample(self, t: int) -> NDArray:
         raise NotImplementedError
     
-    def ll(self, u: NDArray, t: int) -> float:
-        """Computes the log-likelihood of the input `u` at time `t`."""
+    def ll(self, z: NDArray, t: int) -> float:
+        """Evaluate the log-likelihood of the sample `z` at time `t`."""
         raise NotImplementedError
     
-    def dll(self, u: NDArray, t: int) -> NDArray:
-        """Computes the derivative of `ll` with respect to the latent state `x`
-        at time `t`."""
+    def dll(self, z: NDArray, t: int) -> NDArray:
+        """Evaluate the derivative of the log-likelihood at the sample `z` and
+        time `t`.
+        """
         raise NotImplementedError
     
-    def d2ll(self, u: NDArray, t: int) -> NDArray:
-        """Computes the second derivative of `ll` with respect to the latent
-        state `x` at time `t`."""
+    def d2ll(self, z: NDArray, t: int) -> NDArray:
+        """Evaluate the second derivative of the log-likelihood at the sample
+        `z` and time `t`.
+        """
         raise NotImplementedError
 
 
 
-class AGInputPrior(InputPrior):
-    """Class for `InputPrior` objects that uses autograd to automatically
-    compute `dll` and `d2ll`."""
+class AGPrior(Prior):
+    """Class for `Prior` objects that uses autograd to automatically compute
+    the derivatives of the log-likelihood.
+    """
 
-    # Use private properties for derivatives because `df_dx = jacobian(.)` makes
+    # Use private properties for derivatives because `dll = jacobian(.)` makes
     # Pylance falsely think code is unreachable
     @cached_property
     def _dll(self):
@@ -166,12 +179,8 @@ class AGInputPrior(InputPrior):
     def _d2ll(self):
         return jacobian(self._dll)
     
-    def dll(self, u: NDArray, t: int) -> NDArray:
-        """Computes the derivative of `ll` with respect to the latent state `x`
-        at time `t`."""
-        return self._dll(u, t)
+    def dll(self, z: NDArray, t: int) -> NDArray:
+        return self._dll(z, t)
     
-    def d2ll(self, u: NDArray, t: int) -> NDArray:
-        """Computes the second derivative of `ll` with respect to the latent
-        state `x` at time `t`."""
-        return self._d2ll(u, t)
+    def d2ll(self, z: NDArray, t: int) -> NDArray:
+        return self._d2ll(z, t)

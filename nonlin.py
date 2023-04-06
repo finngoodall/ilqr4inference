@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from lib.functions import sample_trajectory
 from lib.models.dynamics import LinearDynamics
-from lib.models.inputs import StudentPrior
+from lib.models.priors import StudentPrior
 from lib.models.measurements import PoissonMeasurement
 from lib.lqr import iLQR
 from lib.plotters import Plotter, plot_variances
@@ -29,7 +29,7 @@ dynamics = LinearDynamics(Nx, Nu, A, B)
 nu = 2
 S = 0.1*np.ones(Nu)
 t0_weight=10.0
-input_prior = StudentPrior(Nu, nu, S)
+input_prior = StudentPrior(Nu, nu, np.zeros(Nu), S)
 
 C = np.ones((Ny, Nx))
 C[:3, 1] = 0

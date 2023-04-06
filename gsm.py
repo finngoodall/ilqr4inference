@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from lib.functions import sample_trajectory
 from lib.lqr import iLQR
 from lib.models.dynamics import GSMDynamicsKnownContrast
-from lib.models.inputs import GaussianPrior
+from lib.models.priors import GaussianPrior
 from lib.models.measurements import GaussianMeasurement
 from lib.plotters import Plotter, plot_variances
 
@@ -27,7 +27,7 @@ y_cov = 0.1*np.eye(Ny)
 
 dynamics = GSMDynamicsKnownContrast(Nx, Nu, B, tau_x=tau_x)
 meas_model = GaussianMeasurement(Ny, y_cov, meas_func)
-input_prior = GaussianPrior(Nu, u_cov)
+input_prior = GaussianPrior(Nu, np.zeros(Nu), u_cov)
 
 
 

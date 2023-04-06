@@ -2,12 +2,12 @@ from numpy.typing import NDArray
 
 import numpy as np
 
-from lib.base import Dynamics, MeasurementModel, InputPrior
+from lib.base import Dynamics, MeasurementModel, Prior
 
 
 
 def sample_trajectory(dynamics: Dynamics, meas_model: MeasurementModel,
-                      input_prior: InputPrior, T: int, x1: NDArray = None):
+                      input_prior: Prior, T: int, x1: NDArray = None):
     """Samples a sequence of corresponding states, control inputs and
     observations from the generative model up to time `T`.
     

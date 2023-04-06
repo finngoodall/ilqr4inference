@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import autograd.numpy as np
 
-from lib.base import Gaussian
 from lib.functions import sample_trajectory
 from lib.kalman import KalmanSmoother
 from lib.lqr import LQR, iLQR
 from lib.models.dynamics import LinearDynamics
-from lib.models.inputs import GaussianPrior
+from lib.models.priors import GaussianPrior
 from lib.models.measurements import LinearGaussianMeasurement
 from lib.plotters import Plotter
 
@@ -31,10 +30,10 @@ u_cov = np.eye(Nu)
 y_cov = 0.15*np.eye(Ny)
 
 dynamics = LinearDynamics(Nx, Nu, A, B)
-input_prior = GaussianPrior(Nu, u_cov)
+input_prior = GaussianPrior(Nu, np.zeros(Nu), u_cov)
 meas_model = LinearGaussianMeasurement(Ny, y_cov, C)
 
-x1_prior = Gaussian(np.zeros(Nx), np.eye(Nx))
+x1_prior = GaussianPrior(Nx, np.zeros(Nx), np.eye(Nx))
 
 
 
