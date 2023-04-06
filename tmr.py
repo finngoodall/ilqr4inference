@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import autograd.numpy as np
 
-from lib.base import Gaussian
 from lib.functions import sample_trajectory
 from lib.kalman import KalmanSmoother
 from lib.lqr import LQR, iLQR
 from lib.models.dynamics import LinearDynamics
-from lib.models.inputs import GaussianPrior
+from lib.models.priors import GaussianPrior
 from lib.models.measurements import LinearGaussianMeasurement
 from lib.plotters import Plotter
 

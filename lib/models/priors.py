@@ -3,15 +3,14 @@ from numpy.typing import NDArray
 import autograd.numpy as np
 from scipy.stats import t as student
 
-from lib.base import AGInputPrior, InputPrior
+from lib.base import AGPrior, Prior
 
 
 
-class GaussianPrior(InputPrior):
-    """Class for a Gaussian prior over the control inputs to a generative model.
-    """
+class GaussianPrior(Prior):
+    """Class for a Gaussian prior over the inital state or control inputs."""
 
-    def __init__(self, Nu: int, mean:NDArray, cov: NDArray):
+    def __init__(self, Nu: int, mean: NDArray, cov: NDArray):
         """Construct the Gaussian prior.
         
         Parameters
@@ -30,26 +29,22 @@ class GaussianPrior(InputPrior):
         self._P = np.linalg.inv(self.cov)
 
     def sample(self, t: int) -> NDArray:
-        """Sample from the control input prior at timestep `t`."""
-
         return np.random.multivariate_normal(self.mean, self.cov)
     
-    def ll(self, u: NDArray, t: int) -> float:
-        z = u - self.mean
-        return -0.5 * z.T @ self._P @ z
+    def ll(self, z: NDArray, t: int) -> float:
+        v = z - self.mean
+        return -0.5 * v.T @ self._P @ v
 
-    def dll(self, u: NDArray, t: int) -> NDArray:
-        return -self._P @ (u - self.mean)
+    def dll(self, z: NDArray, t: int) -> NDArray:
+        return -self._P @ (z - self.mean)
     
-    def d2ll(self, u: NDArray, t: int) -> NDArray:
+    def d2ll(self, z: NDArray, t: int) -> NDArray:
         return -self._P
 
 
 
-class StudentPrior(AGInputPrior):
-    """Class for a Student t-distribution prior over the control inputs in a
-    generative model.
-    """
+class StudentPrior(AGPrior):
+    """Class for a Student prior over the initial state or control inputs."""
 
     def __init__(self, Nu: int, nu: float, mean: NDArray, S: NDArray):
         """Construct the Gaussian prior.
@@ -71,10 +66,8 @@ class StudentPrior(AGInputPrior):
         self.S = S
 
     def sample(self, t: int) -> NDArray:
-        """Sample from the control input prior at timestep `t`."""
-        
         return student.rvs(df=self.nu, loc=self.mean, scale=self.S)
     
-    def ll(self, u: NDArray, t: int) -> float:
-        z = u - self.mean
-        return -np.log(1 + (z.T/self.S @ z) / self.nu)
+    def ll(self, z: NDArray, t: int) -> float:
+        v = z - self.mean
+        return -np.log(1 + (v.T/self.S @ v) / self.nu)

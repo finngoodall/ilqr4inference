@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from lib.functions import sample_trajectory
 from lib.lqr import iLQR
 from lib.models.dynamics import GSMDynamicsKnownContrast
-from lib.models.inputs import GaussianPrior
+from lib.models.priors import GaussianPrior
 from lib.models.measurements import GaussianMeasurement
 from lib.plotters import Plotter, plot_variances
 

@@ -3,10 +3,10 @@ from typing import List, Tuple
 
 import numpy as np
 
-from lib.base import Gaussian, Dynamics, MeasurementModel, InputPrior
+from lib.base import Gaussian, Dynamics, MeasurementModel, Prior
 from lib.models.dynamics import LinearDynamics
 from lib.models.measurements import LinearGaussianMeasurement
-from lib.models.inputs import GaussianPrior
+from lib.models.priors import GaussianPrior
 from lib.utils import diag_regularise, pd_svd_inv
 
 
@@ -18,9 +18,9 @@ class iLQR():
             self,
             dynamics: Dynamics,
             meas_model: MeasurementModel,
-            input_prior: InputPrior,
+            input_prior: Prior,
             ys: List[NDArray],
-            x0_prior: Gaussian = None,
+            x0_prior: Prior = None,
             ls_gamma: float = 0.5,
             ls_iters: int | None = 25
         ) -> None:
@@ -451,7 +451,7 @@ class LQR(iLQR):
             meas_model: LinearGaussianMeasurement,
             input_prior: GaussianPrior,
             ys: List[NDArray],
-            x0_prior: Gaussian = None
+            x0_prior: Prior = None
         ) -> None:
         """Contruct the LQR instance.
         

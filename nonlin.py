@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from lib.functions import sample_trajectory
 from lib.models.dynamics import LinearDynamics
-from lib.models.inputs import StudentPrior
+from lib.models.priors import StudentPrior
 from lib.models.measurements import PoissonMeasurement
 from lib.lqr import iLQR
 from lib.plotters import Plotter, plot_variances
