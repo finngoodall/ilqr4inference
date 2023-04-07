@@ -43,11 +43,16 @@ class Plotter():
         # Formatting
         fig.suptitle(f"{name}s")
         for i, ax in enumerate(axs):
-            ax.set_ylabel(f"${symbol}_{i}$")
+            if N == 1:
+                ax.set_ylabel(f"${symbol}$")
+            else:
+                ax.set_ylabel(f"${symbol}_{i}$")
+                
             if i == N-1:
                 ax.set_xlabel("Time Index")
             else:
                 ax.set_xticklabels([])
+                
             ax.spines["bottom"].set_linewidth(1.5)
             ax.spines["left"].set_linewidth(1.5)
             ax.spines["top"].set_visible(False)
