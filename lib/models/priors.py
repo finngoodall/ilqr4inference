@@ -66,8 +66,13 @@ class StudentPrior(AGPrior):
         self.S = S
 
     def sample(self, t: int) -> NDArray:
-        return student.rvs(df=self.nu, loc=self.mean, scale=self.S)
-    
+        rv = student.rvs(df=self.nu, loc=self.mean, scale=self.S)
+        
+        if self.Nu == 1:
+            return np.array([rv])
+            
+        return rv
+
     def ll(self, z: NDArray, t: int) -> float:
         v = z - self.mean
         return -np.log(1 + (v.T/self.S @ v) / self.nu)
