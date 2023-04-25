@@ -157,6 +157,7 @@ class iLQR():
         V = C_xxs[-1]
         v = c_xs[-1]
         Vs[-1] = V
+        # Set final input covariance to the prior
         Q_uu_invs[-1] = pd_svd_inv(C_uus[-1])
 
         for t in range(self.T-2, -1, -1):
@@ -392,7 +393,7 @@ class iLQR():
 
         xs = self._rollout(us_init)
         us = np.array(us_init)
-        # Set final input to 0 as it cannot be determined
+        # Set final input to the prior
         us[-1] = self.input_prior.mean
 
         cost = self._cost(xs, us)
@@ -423,9 +424,7 @@ class iLQR():
 
             ks, Ks, v0, Vs, Q_uu_invs = self._backward_pass(F_xs, F_us, c_xs,
                                                             c_us, C_xxs, C_uus)
-
-            xs_new, us_new, new_cost = self._forward_pass(xs, us, ks, Ks, v0,
-                                                          Vs[0])
+            xs, us, new_cost = self._forward_pass(xs, us, ks, Ks, v0, Vs[0])
 
             if print_iters:
                 print(f"iLQR {i+1}/{num_iters}: Cost = {new_cost}")
@@ -433,8 +432,6 @@ class iLQR():
             if cost - new_cost <= tol:
                 break
 
-            xs = xs_new
-            us = us_new
             cost = new_cost
 
         xs, us = self._compute_covs(xs, us, Ks, Vs, Q_uu_invs, F_xs, F_us,
