@@ -19,7 +19,6 @@ class iLQR():
             dynamics: Dynamics,
             meas_model: MeasurementModel,
             input_prior: Prior,
-            ys: List[NDArray],
             x0_prior: Prior = None,
             ls_gamma: float = 0.5,
             ls_iters: int | None = 25
@@ -33,8 +32,6 @@ class iLQR():
             The measurement model of the generative model
         - `input_prior`:
             The prior over the generative model's control inputs
-        - `ys`:
-            The seen observations
         - `x0_prior = None`:
             The prior over the initial state of the trajectory
         - `ls_gamma = 0.5`:
@@ -47,11 +44,9 @@ class iLQR():
         self.dynamics = dynamics
         self.meas_model = meas_model
         self.input_prior = input_prior
-        self.ys = ys
         self.x0_prior = x0_prior
         self.ls_gamma = ls_gamma
         self.ls_iters = ls_iters
-        self.T = len(self.ys)
 
     def _rollout(
             self,
@@ -71,7 +66,8 @@ class iLQR():
         xs = np.zeros((self.T, self.dynamics.Nx))
 
         if self.x0_prior:
-            x = self.x0_prior.mean
+            # x = self.x0_prior.mean
+            x = self.x0_prior.sample(0)
         else:
             x = np.zeros(self.dynamics.Nx)
 
@@ -84,7 +80,8 @@ class iLQR():
     def _cost(
             self,
             xs: NDArray,
-            us: NDArray
+            us: NDArray,
+            ys: List[NDArray]
         ) -> float:
         """Calculate the cost of the passed trajectory.
         
@@ -104,7 +101,7 @@ class iLQR():
             cost -= self.x0_prior.ll(xs[0], 0)
 
         for t in range(self.T):
-            cost -= self.meas_model.ll(xs[t], self.ys[t], t)
+            cost -= self.meas_model.ll(xs[t], ys[t], t)
             cost -= self.input_prior.ll(us[t], t)
 
         return cost
@@ -293,8 +290,8 @@ class iLQR():
 
             F_x_inv = np.linalg.inv(F_xs[t])
             P1 = F_x_inv.T @ (P + C_xxs[t]) @ F_x_inv
-            P2 = pd_svd_inv(C_uus[t] + F_us[t].T@P1@F_us[t])
-            P = P1 - P1@F_us[t]@P2@F_us[t].T@P1.T
+            P2 = pd_svd_inv(C_uus[t] + F_us[t].T @ P1 @ F_us[t])
+            P = P1 - P1 @ F_us[t] @ P2 @ F_us[t].T @ P1.T
             P = (P + P.T)/2
 
         return xs_with_covs, us_with_covs
@@ -303,6 +300,7 @@ class iLQR():
             self,
             xs_old: NDArray,
             us_old: NDArray,
+            ys: List[NDArray],
             ks: NDArray,
             Ks: NDArray,
             v0: NDArray,
@@ -338,17 +336,17 @@ class iLQR():
             The cost of the updated trajectory
         """
         
-        cost_old = self._cost(xs_old, us_old)
+        cost_old = self._cost(xs_old, us_old, ys)
 
-        trajectory_updated = False
         if self.ls_iters == None:
             xs, us = self._compute_means(1, xs_old, us_old, ks, Ks, v0, V0)
-            return xs, us, self._cost(xs, us)
+            return xs, us, self._cost(xs, us, ys)
 
         a = 1.0
+        trajectory_updated = False
         for _ in range(self.ls_iters):
             xs, us = self._compute_means(a, xs_old, us_old, ks, Ks, v0, V0)
-            cost = self._cost(xs, us)
+            cost = self._cost(xs, us, ys)
 
             if cost <= cost_old:
                 trajectory_updated = True
@@ -356,14 +354,16 @@ class iLQR():
 
             a *= self.ls_gamma
 
-        if not trajectory_updated:
+        if trajectory_updated:
+            return xs, us, cost
+        else:
             return xs_old, us_old, cost_old
         
-        return xs, us, cost
         
     
     def __call__(
             self,
+            ys: List[NDArray],
             us_init: List[NDArray],
             tol: float = 1e-4,
             num_iters: int = 100,
@@ -373,6 +373,8 @@ class iLQR():
         model, observations and prior over the first state.
 
         Parameters:
+        - `ys`:
+            The seen observations
         - `us_init`:
             Initial guess of the optimal control inputs
         - `tol = 1e-4`:
@@ -391,12 +393,13 @@ class iLQR():
                 The MAP control inputs
         """
 
+        self.T = len(ys)
         xs = self._rollout(us_init)
         us = np.array(us_init)
         # Set final input to the prior
         us[-1] = self.input_prior.mean
 
-        cost = self._cost(xs, us)
+        cost = self._cost(xs, us, ys)
         if print_iters:
             print(f"iLQR 0/{num_iters}: Cost = {cost}")
 
@@ -413,9 +416,9 @@ class iLQR():
                 F_xs[t] = self.dynamics.df_dx(xs[t], us[t], t)
                 F_us[t] = self.dynamics.df_du(xs[t], us[t], t)
 
-                c_xs[t] = -self.meas_model.dll(xs[t], self.ys[t], t)
+                c_xs[t] = -self.meas_model.dll(xs[t], ys[t], t)
                 C_xxs[t] = diag_regularise(
-                    -self.meas_model.d2ll(xs[t], self.ys[t], t))
+                    -self.meas_model.d2ll(xs[t], ys[t], t))
                 if t == 0 and self.x0_prior:
                     c_xs[t] += -self.x0_prior.dll(xs[t], t)
                     C_xxs[t] += -self.x0_prior.d2ll(xs[t], t)
@@ -424,7 +427,7 @@ class iLQR():
 
             ks, Ks, v0, Vs, Q_uu_invs = self._backward_pass(F_xs, F_us, c_xs,
                                                             c_us, C_xxs, C_uus)
-            xs, us, new_cost = self._forward_pass(xs, us, ks, Ks, v0, Vs[0])
+            xs, us, new_cost = self._forward_pass(xs, us, ys, ks, Ks, v0, Vs[0])
 
             if print_iters:
                 print(f"iLQR {i+1}/{num_iters}: Cost = {new_cost}")
@@ -450,7 +453,6 @@ class LQR(iLQR):
             dynamics: LinearDynamics,
             meas_model: LinearGaussianMeasurement,
             input_prior: GaussianPrior,
-            ys: List[NDArray],
             x0_prior: Prior = None
         ) -> None:
         """Contruct the LQR instance.
@@ -462,8 +464,6 @@ class LQR(iLQR):
             The measurement model of the generative model
         - `input_prior`:
             The prior over the generative model's control inputs
-        - `ys`:
-            The seen observations
         - `x0_prior = None`:
             The prior over the initial state of the trajectory
         """
@@ -474,15 +474,26 @@ class LQR(iLQR):
         if not linear_model:
             print("Warning: LQR can only infer over linear Gaussian generative models correctly.")
 
-        super().__init__(dynamics, meas_model, input_prior, ys, x0_prior,
+        super().__init__(dynamics, meas_model, input_prior, x0_prior,
                          ls_iters=None)
 
-    def __call__(self) -> Tuple[List[Gaussian]]:
+    def __call__(self, ys: List[NDArray]) -> Tuple[List[Gaussian]]:
         """Run LQR to find the MAP states and inputs given the generative
         model, observations and prior over the first state.
+
+        Parameters
+        - `ys`:
+            The seen observations
+
+        Returns
+        - Tuple of...
+            - `xs`:
+                The MAP states
+            - `us`:
+                The MAP control inputs
         """
 
         us_init = [np.zeros(self.dynamics.Nu) for _ in range(self.T)]
-        return super().__call__(us_init, num_iters=1)
+        return super().__call__(ys, us_init, num_iters=1)
 
 
