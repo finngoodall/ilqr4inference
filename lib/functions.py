@@ -1,33 +1,47 @@
-from numpy.typing import NDArray
-
-import numpy as np
-
 from lib.base import Dynamics, MeasurementModel, Prior
 
 
 
-def sample_trajectory(dynamics: Dynamics, meas_model: MeasurementModel,
-                      input_prior: Prior, T: int, x1: NDArray = None):
-    """Samples a sequence of corresponding states, control inputs and
-    observations from the generative model up to time `T`.
+def sample_trajectory(
+        dynamics: Dynamics,
+        meas_model: MeasurementModel,
+        input_prior: Prior,
+        x0_prior: Prior,
+        T: int
+    ):
+    """Sample sequences of corresponding states, control inputs and observations
+    from a generative model.
     
-    `x1` can be given as the first state in the sequence, else an input is
-    sampled from the input prior at time 0 with a hidden initial state `x0` of
-    zero.
-    
-    The returned sequences will only contain timesteps 1 to `T`."""
-
-    if isinstance(x1, np.ndarray):
-        x = x1
-    else:
-        u0 = input_prior.sample(0)
-        x = dynamics.f(np.zeros(dynamics.Nx), u0, 0)
+    Parameters
+    - `dynamics`:
+        The dynamics of the latent states in the generative model
+    - `meas_model`:
+        The observation emission model of the generative model
+    - `input_prior`:
+        The prior over the control inputs in the generative model
+    - `x0_prior`:
+        The prior over the initial state in the sequence in the generative model
+    - `T`:
+        The number of timesteps in the sampled sequences
+        
+    Returns
+    - Tuple of...
+        - `xs`:
+            The sampled states
+        - `us`:
+            The sampled control inputs
+        - `ys`:
+            The sampled observations
+    """
 
     xs = []
     us = []
     ys = []
 
-    for t in range(1, T+1):
+    for t in range(T):
+        if t == 0:
+            x = x0_prior.sample(t)
+        
         u = input_prior.sample(t)
         y = meas_model.sample(x, t)
         
