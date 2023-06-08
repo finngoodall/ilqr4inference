@@ -44,6 +44,18 @@ class Gaussian():
 class MeasurementModel():
     """Base class for the measurement distributions in generative models."""
 
+    def h(self, x: NDArray, t: int) -> NDArray:
+        """Evaluate the measurement mean fuction at the state `x` and time
+        `t`.
+        """
+        raise NotImplementedError
+
+    def dh_dx(self, x: NDArray, t: int) -> NDArray:
+        """Evaluate the derivative of the measurement mean function at the state
+        `x` and time `t`.
+        """
+        raise NotImplementedError
+
     def sample(self, x: NDArray, t: int) -> NDArray:
         """Sample a measurement from the latent state `x` at time `t`."""
         raise NotImplementedError
@@ -76,6 +88,10 @@ class AGMeasurementModel(MeasurementModel):
     # Use private properties for derivatives because `dc_dx = jacobian(.)` makes
     # Pylance falsely think code is unreachable
     @cached_property
+    def _dh_dx(self):
+        return jacobian(self.h)
+    
+    @cached_property
     def _dll(self):
         return jacobian(self.ll)
 
@@ -83,6 +99,9 @@ class AGMeasurementModel(MeasurementModel):
     def _d2ll(self):
         return jacobian(self._dll)
     
+    def dh_dx(self, x: NDArray, t: int) -> NDArray:
+        return self._dh_dx(x, t)
+
     def dll(self, x: NDArray, y: NDArray, t: int) -> NDArray:
         return self._dll(x, y, t)
     
