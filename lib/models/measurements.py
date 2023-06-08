@@ -36,8 +36,11 @@ class LinearGaussianMeasurement(MeasurementModel):
         # Store the precision matrix to use in calculations
         self._P = np.linalg.inv(self.cov)
 
-    def h(self, x, t) -> NDArray:
+    def h(self, x: NDArray, t: int) -> NDArray:
         return self.C @ x
+
+    def dh_dx(self, x: NDArray, t: int) -> NDArray:
+        return self.C
 
     def sample(self, x: NDArray, t: int) -> NDArray:
         return np.random.multivariate_normal(self.C@x, self.cov)
@@ -64,7 +67,7 @@ class GaussianMeasurement(AGMeasurementModel):
             self,
             Ny: int,
             cov: NDArray,
-            h: Callable[[NDArray, int], NDArray] = lambda x, t: x
+            mean_func: Callable[[NDArray, int], NDArray] = lambda x, t: x
         ) -> None:
         """Construct the measurement model.
         
@@ -80,13 +83,16 @@ class GaussianMeasurement(AGMeasurementModel):
 
         self.Ny = Ny
         self.cov = cov
-        self.h = h
+        self.mean_func = mean_func
         # Store the precision matrix to use in calculations
         self._P = np.linalg.inv(self.cov)
 
+    def h(self, x: NDArray, t: int) -> NDArray:
+        return self.mean_func(x, t)
+
     def sample(self, x: NDArray, t: int) -> NDArray:
         return np.random.multivariate_normal(self.h(x, t), self.cov)
-    
+
     def ll(self, x: NDArray, y: NDArray, t: int) -> float:
         v = self.h(x, t) - y
         return -0.5 * v.T @ self._P @ v
@@ -99,7 +105,7 @@ class PoissonMeasurement(AGMeasurementModel):
     def __init__(
             self,
             Ny: int,
-            h: Callable[[NDArray], NDArray] = lambda x, t: x
+            mean_func: Callable[[NDArray], NDArray] = lambda x, t: x
         ) -> None:
         """Construct the measurement model.
         
@@ -112,7 +118,10 @@ class PoissonMeasurement(AGMeasurementModel):
         """
 
         self.Ny = Ny
-        self.h = h
+        self.mean_func = mean_func
+
+    def h(self, x: NDArray, t: int) -> NDArray:
+        return self.mean_func(x, t)
 
     def sample(self, x: NDArray, t: int) -> NDArray:
         return np.random.poisson(lam=self.h(x, t))
@@ -132,10 +141,17 @@ class GSMExpMeasurement(MeasurementModel):
     def __init__(self, Ny: int, A: NDArray, cov: NDArray):
         self.Ny = Ny
         self.A = A
-        self.h = lambda x, t: np.exp(x[-1]) * self.A @ x[:-1]
         self.cov = cov
         # Store the precision matrix
         self._P = np.linalg.inv(self.cov)
+
+    def h(self, x: NDArray, t: int) -> NDArray:
+        return np.exp(x[-1]) * self.A @ x[:-1]
+    
+    def dh_dx(self, x: NDArray, t: int) -> NDArray:
+        top = x[-1] * self.A
+        bot = self.A @ x[:-1]
+        return np.hstack((top, bot))
 
     def sample(self, x: NDArray, t: int) -> NDArray:
         return np.random.multivariate_normal(self.h(x, t), self.cov)
@@ -162,3 +178,18 @@ class GSMExpMeasurement(MeasurementModel):
 
 
 
+class BernoulliMeasurement(AGMeasurementModel):
+    def __init__(self, Nx: int, Ny: int):
+        self.Nx = Nx
+        self.Ny = Ny
+
+    def h(self, x: NDArray, t: int) -> NDArray:
+        return np.exp(-0.75*np.sum(x**2))
+    
+    def sample(self, x: NDArray, t: int) -> NDArray:
+        ys = np.random.uniform(size=self.Ny) <= self.h(x, t)
+        return ys.astype(int)
+    
+    def ll(self, x: NDArray, y: NDArray, t: int) -> NDArray:
+        m = self.h(x, t)
+        return np.sum(y)*np.log(m) + np.sum(1 - y)*np.log(1 - m)
