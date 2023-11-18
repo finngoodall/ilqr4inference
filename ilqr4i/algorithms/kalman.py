@@ -3,10 +3,10 @@ from typing import List, Tuple
 
 import autograd.numpy as np
 
-from lib.base import Gaussian
-from lib.models.dynamics import LinearDynamics
-from lib.models.measurements import LinearGaussianMeasurement
-from lib.models.priors import GaussianPrior
+from ..base import Gaussian
+from ..models.dynamics.linear import LinearDynamics
+from ..models.measurements.gaussian import LinearGaussianMeasurement
+from ..models.priors.gaussian import GaussianPrior
 
 
 

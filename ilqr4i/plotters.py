@@ -1,13 +1,12 @@
 from numpy.typing import NDArray
-from typing import List, Tuple
+from typing import List
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import autograd.numpy as np
 
-from lib.base import Gaussian, MeasurementModel
-
-plt.style.use(["lib/style.mplstyle"])
+from .base import Gaussian
+from .models.measurements import MeasurementModel
 
 # Paul Tor - "vibrant" (colour-blind friendly)
 # https://personal.sron.nl/~pault/

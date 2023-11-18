@@ -2,3 +2,4 @@ __pycache__/
 figs/
 .vscode/
 .venv/
+style.mplstyle

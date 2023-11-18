@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from lib.base import Gaussian
+from .base import Gaussian
 
 
 

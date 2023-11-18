@@ -1,4 +1,6 @@
-from lib.base import Dynamics, MeasurementModel, Prior
+from .models.dynamics.base import Dynamics
+from .models.measurements.base import MeasurementModel
+from .models.priors.base import Prior
 
 
 

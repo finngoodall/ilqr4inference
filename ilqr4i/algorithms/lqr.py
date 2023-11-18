@@ -1,13 +1,14 @@
 from numpy.typing import NDArray
 from typing import List, Tuple
 
-import numpy as np
+import autograd.numpy as np
 
-from lib.base import Gaussian, Dynamics, MeasurementModel, Prior
-from lib.models.dynamics import LinearDynamics
-from lib.models.measurements import LinearGaussianMeasurement
-from lib.models.priors import GaussianPrior
-from lib.utils import diag_regularise, pd_svd_inv
+from ..base import Gaussian
+from ..models import Dynamics, MeasurementModel, Prior
+from ..models.dynamics.linear import LinearDynamics
+from ..models.measurements.gaussian import LinearGaussianMeasurement
+from ..models.priors.gaussian import GaussianPrior
+from ..utils import diag_regularise, pd_svd_inv
 
 
 
